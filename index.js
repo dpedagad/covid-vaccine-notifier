@@ -2,8 +2,6 @@ const fetch = require('node-fetch')
 
 const prompts = require('prompts');
 
-const statesArr = [];
-const districtsArr = [];
 const questions = [
 
     {
@@ -11,15 +9,15 @@ const questions = [
         name: 'Options',
         message: 'Do you want to fetch by state and district or pincode?',
         choices: [
-            { title: 'State and District', description: 'Select this option, if you are not in a city', value: 'State and District' },
-            { title: 'Pincode', value: 'Pincode' },],
+            { title: 'State and District', description: 'Select this option, if you are not in a city', value: 0 },
+            { title: 'Pincode', value: 1 },],
     },
 
     {
-        type: prev => prev == 'State and District' ? 'select' : 'number',
-        name: prev => prev == 'State and District' ? 'State' : 'Pincode',
-        message: prev => prev == 'State and District' ? 'Select State' : 'Enter Pincode',
-        choices: prev => prev == 'State and District' ? fetchStates() : null,
+        type: prev => prev === 0 ? 'select' : 'number',
+        name: prev => prev === 0 ? 'State' : 'Pincode',
+        message: prev => prev === 0 ? 'Select State' : 'Enter Pincode',
+        choices: prev => prev === 0 ? fetchStates() : null,
     },
     {
         type: prev => prev < 40 ? 'select' : null,
@@ -64,14 +62,14 @@ const questions = [
     {
         type: 'date',
         name: 'Date',
-        message: 'Choose a future date (If need to check on same date, then choose future time)',
+        message: 'Choose a future date (If need to check on the same date, then choose future time)',
         validate: date => date < Date.now() ? 'Please enter a valid future date' : true
     }
 
 ];
 
-async function fetchStates() {
-
+const fetchStates = async () => {
+    const statesArr = [];
     await fetch('https://cdn-api.co-vin.in/api/v2/admin/location/states', {
         method: 'get',
         responseType: 'stream',
@@ -92,8 +90,8 @@ async function fetchStates() {
     return statesArr
 }
 
-async function fetchDistricts(stateID) {
-
+const fetchDistricts = async (stateID) => {
+    const districtsArr = [];
     await fetch('https://cdn-api.co-vin.in/api/v2/admin/location/districts/' + stateID, {
         method: 'get',
         responseType: 'stream',
@@ -123,8 +121,8 @@ function minimumAge(age) {
     }
 }
 
-function checkAvailabilityByDistrictID(dID, date, age, vaccine, dose, payment) {
-    return fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=' + dID + '&date=' + date, {
+const checkAvailabilityByDistrictID = (dID, date, age, vaccine, dose, payment) => {
+    fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=' + dID + '&date=' + date, {
         method: 'get',
         responseType: 'stream',
         headers: {
@@ -133,7 +131,6 @@ function checkAvailabilityByDistrictID(dID, date, age, vaccine, dose, payment) {
     }).then(response => response.json())
         .then((res) => {
             flag = false;
-
             if (res.centers.length != 0) {
                 const min_age = minimumAge(age)
                 for (c in res.centers) {
@@ -166,8 +163,8 @@ function checkAvailabilityByDistrictID(dID, date, age, vaccine, dose, payment) {
         .catch(err => console.log(err));
 }
 
-function checkAvailabilityByPincode(pin, date, age, vaccine, dose, payment) {
-    return fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode=' + pin + '&date=' + date, {
+const checkAvailabilityByPincode = (pin, date, age, vaccine, dose, payment) => {
+    fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode=' + pin + '&date=' + date, {
         method: 'get',
         responseType: 'stream',
         headers: {
@@ -175,7 +172,6 @@ function checkAvailabilityByPincode(pin, date, age, vaccine, dose, payment) {
         }
     }).then(response => response.json())
         .then((res) => {
-            console.log("res is", res)
             flag = false;
             if (res.centers.length != 0) {
                 const min_age = minimumAge(age)
@@ -209,19 +205,15 @@ function checkAvailabilityByPincode(pin, date, age, vaccine, dose, payment) {
         .catch(err => console.log(err));
 }
 
-
 (() => {
-    const onSubmit = (prompt, answer) => console.log(`Thanks we got ${answer} from ${prompt.name}`);
-    return prompts(questions, { onSubmit });
+    return prompts(questions);
 })().then((res) => {
     const date = res.Date.toLocaleDateString();
-
-    if (res.fetch_using == 'Pincode') {
+    if (res.Options == 1) {
         checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment)
-        setInterval(() => { checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment) }, 5000)
+        setInterval(() => { checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment) }, 60000)
     } else {
         checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment)
-        setInterval(() => { checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment) }, 5000)
+        setInterval(() => { checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment) }, 60000)
     }
 });
-
