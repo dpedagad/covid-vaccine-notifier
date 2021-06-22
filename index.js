@@ -125,7 +125,7 @@ function minimumAge(age) {
 }
 
 function checkAvailabilityByDistrictID(dID, date, age, vaccine, dose, payment) {
-    return fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict?district_id=' + dID + '&date=' + date, {
+    return fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=' + dID + '&date=' + date, {
         method: 'get',
         responseType: 'stream',
         headers: {
@@ -134,39 +134,25 @@ function checkAvailabilityByDistrictID(dID, date, age, vaccine, dose, payment) {
     }).then(response => response.json())
         .then((res) => {
             flag = false;
-            if (res.sessions.length != 0) {
+            if (res.centers.length != 0) {
                 const min_age = minimumAge(age)
-                for (s in res.sessions) {
-                    if (dose == 1) {
-                        if (payment == 'Free') {
-                            if (min_age == res.sessions[s].min_age_limit && vaccine == res.sessions[s].vaccine && payment == res.sessions[s].fee_type && res.sessions[s].available_capacity_dose1 > 0) {
-                                console.log("1st dose", res.sessions[s].vaccine, "vaccines are available at", res.sessions[s].name, "with capacity", res.sessions[s].available_capacity_dose1, "for minimum age limit", res.sessions[s].min_age_limit)
-                                res.sessions[s].available_capacity_dose1
+                for (c in res.centers) {
+                    for (s in res.centers[c].sessions) {
+                        if (dose == 1) {
+                            if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].fee_type && res.centers[c].sessions[s].available_capacity_dose1 > 0) {
+                                console.log("1st dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "with capacity", res.centers[c].sessions[s].available_capacity_dose1, "on date", res.centers[c].sessions[s].date)
                                 flag = true
                             }
-                        } else {
-                            if (min_age == res.sessions[s].min_age_limit && vaccine == res.sessions[s].vaccine && payment == res.sessions[s].fee_type && res.sessions[s].available_capacity_dose1 > 0) {
-                                console.log("1st dose", res.sessions[s].vaccine, "vaccines are available at", res.sessions[s].name, "with capacity", res.sessions[s].available_capacity_dose1, "for minimum age limit", res.sessions[s].min_age_limit)
-                                res.sessions[s].available_capacity_dose1
-                                flag = true
-                            }
-                        }
 
-                    } else if (dose == 2) {
-                        if (payment == 'Free') {
-                            if (min_age == res.sessions[s].min_age_limit && vaccine == res.sessions[s].vaccine && payment == res.sessions[s].fee_type && res.sessions[s].available_capacity_dose2 > 0) {
-                                console.log("2nd dose", res.sessions[s].vaccine, "vaccines are available at", res.sessions[s].name, "with capacity", res.sessions[s].available_capacity_dose2, "for minimum age limit", res.sessions[s].min_age_limit)
-                                res.sessions[s].available_capacity_dose2
+
+                        } else if (dose == 2) {
+                            if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].fee_type && res.centers[c].sessions[s].available_capacity_dose2 > 0) {
+                                console.log("2nd dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "with capacity", res.centers[c].sessions[s].available_capacity_dose2, "on date", res.centers[c].sessions[s].date)
                                 flag = true
-                            } else {
-                                if (min_age == res.sessions[s].min_age_limit && vaccine == res.sessions[s].vaccine && payment == res.sessions[s].fee_type && res.sessions[s].available_capacity_dose2 > 0) {
-                                    console.log("2nd dose", res.sessions[s].vaccine, "vaccines are available at", res.sessions[s].name, "with capacity", res.sessions[s].available_capacity_dose2, "for minimum age limit", res.sessions[s].min_age_limit)
-                                    res.sessions[s].available_capacity_dose2
-                                    flag = true
-                                }
                             }
 
                         }
+
 
                     }
                 }
@@ -180,7 +166,7 @@ function checkAvailabilityByDistrictID(dID, date, age, vaccine, dose, payment) {
         .catch(err => console.log(err));
 }
 
-function checkAvailabilityByPincode(pin, date, age, vaccine, dose) {
+function checkAvailabilityByPincode(pin, date, age, vaccine, dose, payment) {
     fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode=' + pin + '&date=' + date, {
         method: 'get',
         responseType: 'stream',
@@ -195,58 +181,43 @@ function checkAvailabilityByPincode(pin, date, age, vaccine, dose) {
                 for (c in res.centers) {
                     for (s in res.centers[c].sessions) {
                         if (dose == 1) {
-                            if (payment == 'Free') {
-                                if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].sessions[s].fee_type && res.centers[c].sessions[s].available_capacity_dose1 > 0) {
-                                    console.log("1st dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "in the given pincode with capacity", res.centers[c].sessions[s].available_capacity_dose1)
-                                    res.centers[c].sessions[s].available_capacity
-                                    flag = true
-                                }
-                            } else {
-                                if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].sessions[s].fee_type && res.centers[c].sessions[s].available_capacity_dose1 > 0) {
-                                    console.log("1st dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "in the given pincode with capacity", res.centers[c].sessions[s].available_capacity_dose1)
-                                    res.centers[c].sessions[s].available_capacity
-                                    flag = true
-                                }
+                            if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].fee_type && res.centers[c].sessions[s].available_capacity_dose1 > 0) {
+                                console.log("1st dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "in the given pincode on date", res.centers[c].sessions[s].date, "with capacity", res.centers[c].sessions[s].available_capacity_dose1)
+                                res.centers[c].sessions[s].available_capacity
+                                flag = true
                             }
+
                         } else if (dose == 2) {
-                            if (payment == 'Free') {
-                                if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].sessions[s].fee_type && res.centers[c].sessions[s].available_capacity_dose2 > 0) {
-                                    console.log("2nd dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "in the given pincode with capacity", res.centers[c].sessions[s].available_capacity_dose2)
-                                    res.centers[c].sessions[s].available_capacity
-                                    flag = true
-                                }
-                            } else {
-                                if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].sessions[s].fee_type && res.centers[c].sessions[s].available_capacity_dose2 > 0) {
-                                    console.log("2nd dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "in the given pincode with capacity", res.centers[c].sessions[s].available_capacity_dose2)
-                                    res.centers[c].sessions[s].available_capacity
-                                    flag = true
-                                }
+                            if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].fee_type && res.centers[c].sessions[s].available_capacity_dose2 > 0) {
+                                console.log("2nd dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "in the given pincode on date", res.centers[c].sessions[s].date, "with capacity", res.centers[c].sessions[s].available_capacity_dose2)
+                                res.centers[c].sessions[s].available_capacity
+                                flag = true
                             }
 
                         }
 
                     }
                 }
-
+                if (!flag) {
+                    console.log("Sorry, there are no slots available for the given input")
+                }
             } else {
-                console.log("Slots are not updated for the date", date, "Please try with an earlier date or time")
+                console.log("Slots are not updated for the date", date)
             }
         })
         .catch(err => console.log(err));
 }
 
-
 (() => {
     const onSubmit = (prompt, answer) => console.log(`Thanks we got ${answer} from ${prompt.name}`);
     return prompts(questions, { onSubmit });
 })().then((res) => {
-
     const date = res.Date.toLocaleDateString();
+
     if (res.fetch_using == 'Pincode') {
         checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment)
     } else {
         checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment)
     }
-
 });
 

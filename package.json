@@ -2,9 +2,9 @@
   "name": "covid-vaccine-notifier",
   "version": "1.0.0",
   "description": "This tool will help the user to check the availability of covid vaccine",
-  "main": "example.js",
+  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
   "repository": {
     "type": "git",
