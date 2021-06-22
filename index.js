@@ -8,7 +8,7 @@ const questions = [
 
     {
         type: 'select',
-        name: 'fetch_using',
+        name: 'Options',
         message: 'Do you want to fetch by state and district or pincode?',
         choices: [
             { title: 'State and District', description: 'Select this option, if you are not in a city', value: 'State and District' },
@@ -20,7 +20,6 @@ const questions = [
         name: prev => prev == 'State and District' ? 'State' : 'Pincode',
         message: prev => prev == 'State and District' ? 'Select State' : 'Enter Pincode',
         choices: prev => prev == 'State and District' ? fetchStates() : null,
-        validate: prev => prev == 'State and District' ? true : value => value < 100000 ? 'Sorry, your pincode is invalid' : true,
     },
     {
         type: prev => prev < 40 ? 'select' : null,
@@ -134,6 +133,7 @@ function checkAvailabilityByDistrictID(dID, date, age, vaccine, dose, payment) {
     }).then(response => response.json())
         .then((res) => {
             flag = false;
+
             if (res.centers.length != 0) {
                 const min_age = minimumAge(age)
                 for (c in res.centers) {
@@ -167,7 +167,7 @@ function checkAvailabilityByDistrictID(dID, date, age, vaccine, dose, payment) {
 }
 
 function checkAvailabilityByPincode(pin, date, age, vaccine, dose, payment) {
-    fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode=' + pin + '&date=' + date, {
+    return fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin?pincode=' + pin + '&date=' + date, {
         method: 'get',
         responseType: 'stream',
         headers: {
@@ -175,6 +175,7 @@ function checkAvailabilityByPincode(pin, date, age, vaccine, dose, payment) {
         }
     }).then(response => response.json())
         .then((res) => {
+            console.log("res is", res)
             flag = false;
             if (res.centers.length != 0) {
                 const min_age = minimumAge(age)
@@ -208,6 +209,7 @@ function checkAvailabilityByPincode(pin, date, age, vaccine, dose, payment) {
         .catch(err => console.log(err));
 }
 
+
 (() => {
     const onSubmit = (prompt, answer) => console.log(`Thanks we got ${answer} from ${prompt.name}`);
     return prompts(questions, { onSubmit });
@@ -216,8 +218,10 @@ function checkAvailabilityByPincode(pin, date, age, vaccine, dose, payment) {
 
     if (res.fetch_using == 'Pincode') {
         checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment)
+        setInterval(() => { checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment) }, 5000)
     } else {
         checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment)
+        setInterval(() => { checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment) }, 5000)
     }
 });
 
