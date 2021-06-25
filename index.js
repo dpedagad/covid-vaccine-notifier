@@ -1,13 +1,16 @@
 const fetch = require('node-fetch')
-
 const prompts = require('prompts');
+const player = require("play-sound")((opts = {}));
 
+const { minimumAge } = require('./utils')
+
+let intervalID = 0;
 const questions = [
 
     {
         type: 'select',
         name: 'Options',
-        message: 'Do you want to fetch by state and district or pincode?',
+        message: 'Do you want to search by (state and district) or pincode?',
         choices: [
             { title: 'State and District', description: 'Select this option, if you are not in a city', value: 0 },
             { title: 'Pincode', value: 1 },],
@@ -18,6 +21,7 @@ const questions = [
         name: prev => prev === 0 ? 'State' : 'Pincode',
         message: prev => prev === 0 ? 'Select State' : 'Enter Pincode',
         choices: prev => prev === 0 ? fetchStates() : null,
+        validate: value => value < 100000 ? 'Please enter a valid pincode' : true
     },
     {
         type: prev => prev < 40 ? 'select' : null,
@@ -113,13 +117,6 @@ const fetchDistricts = async (stateID) => {
 }
 
 
-function minimumAge(age) {
-    if (age < 45) {
-        return 18
-    } else {
-        return 45
-    }
-}
 
 const checkAvailabilityByDistrictID = (dID, date, age, vaccine, dose, payment) => {
     fetch('https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict?district_id=' + dID + '&date=' + date, {
@@ -131,20 +128,21 @@ const checkAvailabilityByDistrictID = (dID, date, age, vaccine, dose, payment) =
     }).then(response => response.json())
         .then((res) => {
             flag = false;
+            mail_body = "";
             if (res.centers.length != 0) {
                 const min_age = minimumAge(age)
                 for (c in res.centers) {
                     for (s in res.centers[c].sessions) {
                         if (dose == 1) {
                             if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].fee_type && res.centers[c].sessions[s].available_capacity_dose1 > 0) {
-                                console.log("1st dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "with capacity", res.centers[c].sessions[s].available_capacity_dose1, "on date", res.centers[c].sessions[s].date)
+                                mail_body += "\n" + "1st dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "with capacity", res.centers[c].sessions[s].available_capacity_dose1, "on date", res.centers[c].sessions[s].date + " from " + res.centers[c].from + " to " + res.centers[c].to
                                 flag = true
                             }
 
 
                         } else if (dose == 2) {
                             if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].fee_type && res.centers[c].sessions[s].available_capacity_dose2 > 0) {
-                                console.log("2nd dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "with capacity", res.centers[c].sessions[s].available_capacity_dose2, "on date", res.centers[c].sessions[s].date)
+                                mail_body += "\n" + "2nd dose " + res.centers[c].sessions[s].vaccine + " vaccines are available at " + res.centers[c].name + " with capacity " + res.centers[c].sessions[s].available_capacity_dose2 + " on date " + res.centers[c].sessions[s].date + " from " + res.centers[c].from + " to " + res.centers[c].to
                                 flag = true
                             }
 
@@ -152,13 +150,22 @@ const checkAvailabilityByDistrictID = (dID, date, age, vaccine, dose, payment) =
 
 
                     }
+
+
                 }
                 if (!flag) {
-                    console.log("Sorry, there are no slots available for the given input")
+                    mail_body = "Sorry, there are no slots available for the given input. Leave this window to run in the background to get notified"
+                } else {
+                    clearInterval(intervalID)
+                    player.play("./beep.mp3");
                 }
-            } else {
-                console.log("Slots are not updated for the date", date, "Please try with an earlier date or time")
             }
+            else {
+                mail_body = "Slots are not updated for the date " + date + " Please try with an earlier date or time ,or leave this window to run in the background to get notified"
+            }
+            console.log(mail_body)
+
+
         })
         .catch(err => console.log(err));
 }
@@ -173,21 +180,20 @@ const checkAvailabilityByPincode = (pin, date, age, vaccine, dose, payment) => {
     }).then(response => response.json())
         .then((res) => {
             flag = false;
+            mail_body = "";
             if (res.centers.length != 0) {
                 const min_age = minimumAge(age)
                 for (c in res.centers) {
                     for (s in res.centers[c].sessions) {
                         if (dose == 1) {
                             if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].fee_type && res.centers[c].sessions[s].available_capacity_dose1 > 0) {
-                                console.log("1st dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "in the given pincode on date", res.centers[c].sessions[s].date, "with capacity", res.centers[c].sessions[s].available_capacity_dose1)
-                                res.centers[c].sessions[s].available_capacity
+                                mail_body += "\n" + "1st dose " + res.centers[c].sessions[s].vaccine + " vaccines are available at " + res.centers[c].name + " in the given pincode on date " + res.centers[c].sessions[s].date + " with capacity " + res.centers[c].sessions[s].available_capacity_dose1 + " on date " + res.centers[c].sessions[s].date + " from " + res.centers[c].from + " to " + res.centers[c].to
                                 flag = true
                             }
 
                         } else if (dose == 2) {
                             if (min_age == res.centers[c].sessions[s].min_age_limit && vaccine == res.centers[c].sessions[s].vaccine && payment == res.centers[c].fee_type && res.centers[c].sessions[s].available_capacity_dose2 > 0) {
-                                console.log("2nd dose", res.centers[c].sessions[s].vaccine, "vaccines are available at", res.centers[c].name, "in the given pincode on date", res.centers[c].sessions[s].date, "with capacity", res.centers[c].sessions[s].available_capacity_dose2)
-                                res.centers[c].sessions[s].available_capacity
+                                mail_body += "\n" + "2nd dose " + res.centers[c].sessions[s].vaccine + " vaccines are available at " + res.centers[c].name + " in the given pincode on date " + res.centers[c].sessions[s].date + " with capacity " + res.centers[c].sessions[s].available_capacity_dose2 + " on date " + res.centers[c].sessions[s].date + " from " + res.centers[c].from + " to " + res.centers[c].to
                                 flag = true
                             }
 
@@ -196,11 +202,18 @@ const checkAvailabilityByPincode = (pin, date, age, vaccine, dose, payment) => {
                     }
                 }
                 if (!flag) {
-                    console.log("Sorry, there are no slots available for the given input")
+                    mail_body = "Sorry, there are no slots available for the given input. Leave this window to run to run in the background to get notified"
+
+                } else {
+                    clearInterval(intervalID)
+                    player.play("./beep.mp3");
                 }
+
             } else {
-                console.log("Slots are not updated for the date", date)
+                mail_body = "Slots are not updated for the date " + date + " Please try with an earlier date or time ,or leave this window to run in the background to get notified"
+
             }
+            console.log(mail_body)
         })
         .catch(err => console.log(err));
 }
@@ -211,9 +224,15 @@ const checkAvailabilityByPincode = (pin, date, age, vaccine, dose, payment) => {
     const date = res.Date.toLocaleDateString();
     if (res.Options == 1) {
         checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment)
-        setInterval(() => { checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment) }, 60000)
+        intervalID = setInterval(() => {
+            checkAvailabilityByPincode(res.Pincode, date, res.Age, res.Vaccine, res.Dose, res.Payment)
+        }, 60000)
     } else {
         checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment)
-        setInterval(() => { checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment) }, 60000)
+        intervalID = setInterval(() => {
+            checkAvailabilityByDistrictID(res.District, date, res.Age, res.Vaccine, res.Dose, res.Payment)
+        }, 60000)
+
+
     }
 });
